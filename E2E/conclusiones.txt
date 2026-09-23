@@ -1,0 +1,77 @@
+====================================================================
+ CONCLUSIONES - PRUEBA E2E FLUJO DE COMPRA (DEMOBLAZE.COM)
+====================================================================
+
+--------------------------------------------------------------------
+1. OBJETIVO
+--------------------------------------------------------------------
+Automatizar y validar el flujo completo de compra en demoblaze.com:
+agregar dos productos, visualizar el carrito, completar el formulario
+de compra y finalizar la compra, verificando la confirmacion final.
+
+--------------------------------------------------------------------
+2. RESULTADO
+--------------------------------------------------------------------
+El flujo E2E quedo implementado con Selenium WebDriver 4 + JUnit 5,
+aplicando el patron Page Object (clase DemoblazePage) para separar
+los selectores y acciones del sitio de la logica del caso de prueba.
+
+La prueba verifica:
+  - Que el carrito contenga exactamente 2 productos.
+  - Que los productos en el carrito sean los agregados.
+  - Que al finalizar se muestre "Thank you for your purchase!".
+
+--------------------------------------------------------------------
+3. HALLAZGOS TECNICOS
+--------------------------------------------------------------------
+  - El boton "Add to cart" de demoblaze dispara un ALERT nativo de
+    JavaScript ("Product added."). Es imprescindible capturarlo con
+    driver.switchTo().alert().accept(); de lo contrario el resto de
+    la prueba se bloquea.
+
+  - El sitio carga el catalogo de productos de forma asincrona (AJAX).
+    Fue necesario usar esperas explicitas (WebDriverWait +
+    ExpectedConditions) en lugar de esperas fijas para evitar
+    intermitencias (tests "flaky").
+
+  - El mensaje de compra exitosa se muestra en un modal tipo
+    SweetAlert (selector .sweet-alert h2), distinto de un alert nativo.
+
+  - WebDriverManager elimina la necesidad de versionar y mantener
+    manualmente los binarios de ChromeDriver, descargando el driver
+    compatible con el navegador instalado en tiempo de ejecucion.
+
+  - El formulario de compra no valida realmente los datos: acepta
+    cualquier valor. Esto es un hallazgo funcional del sitio de
+    pruebas (permite finalizar la compra aun con datos ficticios).
+
+--------------------------------------------------------------------
+4. DECISIONES DE DISENO
+--------------------------------------------------------------------
+  - Patron Page Object: mejora la mantenibilidad; si cambia un
+    selector, solo se actualiza DemoblazePage.
+  - Esperas explicitas en vez de Thread.sleep para mayor estabilidad.
+  - Soporte de ejecucion headless via -Dheadless=true, util para
+    integracion continua (CI).
+  - Toolchain de Java 21 declarado en build.gradle para asegurar la
+    version correcta de compilacion.
+
+--------------------------------------------------------------------
+5. LIMITACIONES Y RIESGOS
+--------------------------------------------------------------------
+  - La prueba depende de un sitio publico de terceros; caidas o
+    cambios en demoblaze.com pueden afectar la ejecucion.
+  - Los nombres de producto usados como localizadores dependen del
+    catalogo actual del sitio.
+  - El entorno de desarrollo actual no tenia Java instalado, por lo
+    que la ejecucion debe realizarse en una maquina con JDK 21.
+
+--------------------------------------------------------------------
+6. MEJORAS FUTURAS
+--------------------------------------------------------------------
+  - Parametrizar los productos y datos del formulario (data-driven).
+  - Agregar capturas de pantalla automaticas ante fallos.
+  - Soporte multi-navegador (Firefox, Edge) via factory de driver.
+  - Integrar la prueba en un pipeline de CI (GitHub Actions).
+  - Agregar reportes enriquecidos (por ejemplo, Allure).
+====================================================================

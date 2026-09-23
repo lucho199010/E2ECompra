@@ -1,0 +1,42 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    karateVersion = '1.4.1'
+}
+
+dependencies {
+    testImplementation "com.intuit.karate:karate-junit5:${karateVersion}"
+}
+
+sourceSets {
+    test {
+        resources {
+            srcDir file('src/test/java')
+            exclude '**/*.java'
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+    // Permite pasar tags: ./gradlew test -Dkarate.options="--tags @signup"
+    systemProperty "karate.options", System.properties.getProperty("karate.options")
+    systemProperty "karate.env", System.properties.getProperty("karate.env")
+    outputs.upToDateWhen { false }
+
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = true
+        exceptionFormat = "full"
+    }
+}
+
+compileTestJava {
+    options.encoding = 'UTF-8'
+}

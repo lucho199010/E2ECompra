@@ -1,0 +1,91 @@
+========================================================================
+ CONCLUSIONES - PRUEBAS DE API DEMOBLAZE (Signup / Login)
+ Herramienta: Karate DSL 1.4.1
+ Resultado global: 5 escenarios ejecutados | 5 PASSED | 0 FAILED
+========================================================================
+
+METODO HTTP Y FORMATO
+---------------------
+- Ambos servicios (signup y login) usan el metodo POST.
+- El cuerpo de la peticion es JSON: { "username": "...", "password": "..." }
+- Header: Content-Type: application/json
+- Hallazgo clave: el campo "password" debe enviarse codificado en BASE64.
+  Si se envia en texto plano, el login posterior falla. El frontend de
+  demoblaze codifica la clave antes de enviarla, y las pruebas replican
+  ese comportamiento.
+- Otro hallazgo: la API responde SIEMPRE con HTTP 200, incluso en los
+  casos de error. El exito o el fracaso NO se distingue por el codigo de
+  estado, sino por el CUERPO de la respuesta (campo "errorMessage" o token).
+
+------------------------------------------------------------------------
+DETALLE POR CASO: ENTRADAS Y SALIDAS
+------------------------------------------------------------------------
+
+CASO 1 - Crear un nuevo usuario en signup
+  Endpoint: POST https://api.demoblaze.com/signup
+  ENTRADA:  { "username": "qauser_<timestamp>", "password": "<Base64>" }
+  SALIDA:   HTTP 200, cuerpo = ""   (cadena JSON vacia = registro exitoso)
+  RESULTADO: PASSED
+  Observacion: no devuelve mensaje de exito; el cuerpo vacio ("") es la
+  senal de que el usuario fue creado.
+
+CASO 2 - Intentar crear un usuario ya existente
+  Endpoint: POST https://api.demoblaze.com/signup
+  ENTRADA:  { "username": "admin", "password": "<Base64>" }
+  SALIDA:   HTTP 200, cuerpo = { "errorMessage": "This user already exist." }
+  RESULTADO: PASSED
+  Observacion: el sistema no permite duplicados y lo informa por el
+  cuerpo, no por el codigo HTTP.
+
+CASO 3 - Usuario y password correctos en login
+  Endpoint: POST https://api.demoblaze.com/login
+  (Se registra primero un usuario nuevo para garantizar credenciales validas)
+  ENTRADA:  { "username": "qalogin_<timestamp>", "password": "<Base64 correcto>" }
+  SALIDA:   HTTP 200, cuerpo = "Auth_token: <token>"
+  RESULTADO: PASSED
+  Observacion: el login exitoso devuelve un token de autenticacion como
+  texto que comienza con "Auth_token:".
+
+CASO 4 - Usuario y password incorrecto en login (password erroneo)
+  Endpoint: POST https://api.demoblaze.com/login
+  ENTRADA:  { "username": "<usuario valido>", "password": "<Base64 equivocado>" }
+  SALIDA:   HTTP 200, cuerpo = { "errorMessage": "Wrong password." }
+  RESULTADO: PASSED
+  Observacion: distingue correctamente un password invalido de un usuario
+  inexistente (ver caso 5).
+
+CASO 5 (adicional) - Usuario inexistente en login
+  Endpoint: POST https://api.demoblaze.com/login
+  ENTRADA:  { "username": "no_existe_<timestamp>", "password": "<Base64>" }
+  SALIDA:   HTTP 200, cuerpo = { "errorMessage": "User does not exist." }
+  RESULTADO: PASSED
+  Observacion: mensaje distinto al de password incorrecto, lo que confirma
+  que la API diferencia ambos escenarios de error.
+
+------------------------------------------------------------------------
+CONCLUSIONES GENERALES
+------------------------------------------------------------------------
+1. Los cinco escenarios se comportan de forma consistente y predecible;
+   las respuestas de la API coinciden con lo esperado en cada caso.
+
+2. El diseno de la API tiene una particularidad importante para pruebas:
+   todos los resultados llegan con HTTP 200. La validacion debe hacerse
+   sobre el cuerpo de la respuesta, no sobre el status code. Esto es una
+   mala practica de diseno REST (lo ideal seria 201, 400, 401, 409, etc.),
+   pero las pruebas se adaptaron a la realidad del servicio.
+
+3. El requerimiento de codificar el password en Base64 no esta documentado
+   en el enunciado; se descubrio al probar el flujo real. Es un detalle
+   critico: sin el, el login con credenciales "correctas" fallaria.
+
+4. Base64 NO es cifrado ni hashing. Enviar el password en Base64 ofrece
+   cero seguridad real (es reversible trivialmente). Es una observacion de
+   seguridad relevante sobre la API bajo prueba.
+
+5. La suite es repetible: usa usuarios unicos por timestamp, por lo que
+   puede ejecutarse multiples veces sin colisiones ni datos previos.
+
+6. Karate resulto una herramienta adecuada: los feature files son legibles
+   (estilo Gherkin), no requiere codigo Java para los casos y genera
+   reportes HTML automaticamente en build/karate-reports/.
+========================================================================
